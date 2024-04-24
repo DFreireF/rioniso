@@ -11,7 +11,6 @@ Label | Harmonic | Simulated Frequency|
 ---------------------------------------
 '''
 
-#imports the ods data
 class ImportData(object):
 
     def __init__(self, simulated_data, experimental_data):
