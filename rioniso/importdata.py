@@ -1,6 +1,16 @@
 import ezodf
 import re
 
+'''
+input: ODS file with:
+---------------------------------------
+Label | Harmonic | Simulated Frequency|
+  .   |     .    |         .          |
+  .   |     .    |         .          |
+  .   |     .    |         .          |
+---------------------------------------
+'''
+
 #imports the ods data
 def import_identification_data(filename, sheet = 0, exclusion_list = None):
     odsinfo = ezodf.opendoc(filename)
