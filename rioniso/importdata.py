@@ -22,16 +22,16 @@ class ImportData(object):
         self.simulated_data = import_identification_data(simulated_data_file)
         self.experimental_data = import_experimental_data(experimental_data_file)
 
-    def import_identification_data(filename, sheet = 0, exclusion_list = None):
+    def import_identification_data(filename, sheet_index = 0, exclusion_list = None):
         odsinfo = ezodf.opendoc(filename)
         sheet = odsinfo.sheets[sheet_index]
         sheet_data = process_sheet(sheet, exclusion_list)
         processed_data = get_processed_data(sheet_data)
         return processed_data
 
-    def process_sheet(sheet, exclusion_list):
+    def process_sheet(sheet, exclusion_list = None):
         data = []
-        # careful with the format of the ods. It must have 7 columns even if the 2nd is irrelevant,     modify
+        # name | harmonics | simulated frequency #
         for row in range(sheet.nrows()):
             if row in exclusion_list:
                 continue
@@ -44,10 +44,10 @@ class ImportData(object):
         # Convert to a 2D numpy array with dtype=object to handle mixed data types
         return np.array(data, dtype=object)
 
-    def get_processed_data(sheet_data):
-        names = sheet_data[:, 0]
-        harmonics = sheet_data[:, 1].astype(int)
-        f = sheet_data[:, 2].astype(float)
+    def get_processed_data(sheet_data, names_index = 0, harmonics_index = 1, frequency_index = 2):
+        names = sheet_data[:, names_index]
+        harmonics = sheet_data[:, harmonics_index].astype(int)
+        f = sheet_data[:, frequency_index].astype(float)
 
         names_latex = [convert_name(name) for name in names]
 
