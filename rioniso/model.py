@@ -1,13 +1,16 @@
 from iqtools import *
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.constants import *
 
-def gaussian(x, amplitude, mean, stddev):
-    return amplitude * np.exp(-((x - mean) / stddev)**2 / 2)
+c = physical_constants['speed of light in vacuum'][0]
+
+def gaussian(x, amplitude, mean, sigma):
+    return amplitude * np.exp(-((x - mean) / sigma)**2 / 2)
 
 def linear_gaussian_func(x, m, c, amplitude, mean, sigma):
     linear_term = m * x + c
-    gaussian_term = gaussian(amplitude, mean, sigma)
+    gaussian_term = gaussian(x, amplitude, mean, sigma)
     return linear_term + gaussian_term
 
 def iso_curve(revt, gammat, dp_p, sys, path = 108.36):
@@ -17,10 +20,25 @@ def fit_iso_curve(T, sT, seeds, sigma):#T and sT in ps
     try:
         fit_params, fit_covariance = curve_fit(iso_curve, T/1000, sT, p0=seeds,
                                            sigma=sigma, absolute_sigma=True)
-        return fit_params, fit_covariance
+        return fit_params, np.sqrt(np.diag(fit_covariance))
 
     except RuntimeError:
         pass
+
+def fit_iso_curve_f(f, sigma, errors = None, seeds = [1.395, 4e-4, 1]):#T and sT in ps
+    try:
+        if errors is not None:
+            fit_params, fit_covariance = curve_fit(iso_curve_f, f, sigma, p0=seeds,
+                                            sigma=errors, absolute_sigma=True)
+        else: 
+            fit_params, fit_covariance = curve_fit(iso_curve_f, f, sigma, p0=seeds)
+        return fit_params, np.sqrt(np.diag(fit_covariance))
+
+    except RuntimeError:
+        pass
+
+def iso_curve_f(revf, gammat, dp_p, sys, path = 108.36):
+    return np.sqrt((((1-(path/c*revf)**2-1/(gammat**2))*dp_p*revf)**2+sys**2))
 
 def calculate_reduced_chi_squared(y_data, y_fit, yerror, num_params):
     residuals = y_data - y_fit
@@ -29,24 +47,29 @@ def calculate_reduced_chi_squared(y_data, y_fit, yerror, num_params):
     chi_squared_red = chi_squared / dof
     return chi_squared_red
 
-def calculate_iso_inputs(simulated_data, data):
-    for frequency in simulated_data:
-        xx, yy, zz = get_cut_spectrogram(data['xx'],data['yy'],data['zz'], 
-                    xcen = frequency, xspan = 7e3)
+def calculate_iso_inputs(simulated_data, data, xspan = 3e3):
+    iso_data = []
+    for label, harmonic, frequency in zip(simulated_data[:,0], simulated_data[:,1], simulated_data[:,-1]):
+        xx, _, zz = get_cut_spectrogram(data['xx'], data['yy'], data['zz'], 
+                    xcen = float(frequency), xspan = xspan)
+        x = xx[0,:]
         az = np.average(zz, axis = 0)
-        p0 = [0,1000, 1000,-0, 400]
+        p0 = [0, 1000, 1000,-0, 400]
         try:
-            popt, pcov = curve_fit(linear_gaussian_func, xx[0,:], az, p0=p0)
+            lower_bounds = [-np.inf, -np.inf, -np.inf, -np.inf, 40]
+            upper_bounds = [np.inf, np.inf, np.inf, np.inf, 1000]
+
+            popt, pcov = curve_fit(linear_gaussian_func, x, az, p0=p0,
+                bounds=(lower_bounds, upper_bounds))
             m, c, amplitude, mean, sigma = popt
-            plt.plot(xx[0,:], az)
-            plt.plot(xx[0,:],linear_gaussian_func(xx[0,:], m, c, amplitude, mean, sigma))
-            plt.show()
-            print('center',int(np.round(popt[3]+xcen)),  int(np.round(np.sqrt(np.diag(pcov))[3])))
-            print('sigma',int(np.round(popt[4])),  int(np.round(np.sqrt(np.diag(pcov))[4])))
-            print('amp',int(np.round(popt[2])),  int(np.round(np.sqrt(np.diag(pcov))[2])))
+            me, ce, amplitudee, meane, sigmae = np.sqrt(np.diag(pcov))
+            fit_params = [label, mean + float(frequency)/float(harmonic), meane/float(harmonic), np.abs(sigma)/float(harmonic), sigmae/float(harmonic), amplitude, amplitudee]
+            iso_data.append(fit_params)
+            
         except RuntimeError:
             pass
 
+    return np.array(iso_data)
 def transform_to_revolution_time(harmonics, frequency, frequency_error, frequency_spread, frequency_spread_error):
     # Inputs: np.arrays
     revolution_time = 1e12 / (frequency / harmonics)
