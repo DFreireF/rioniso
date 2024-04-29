@@ -13,20 +13,20 @@ Label | Harmonic | Simulated Frequency|
 
 class ImportData(object):
 
-    def __init__(self, simulated_data, experimental_data):
+    def __init__(self, simulated_data_file, experimental_data_file):
         self.simulated_data = np.array([])
         self.experimental_data = np.array([])
-        self._import()
+        self._import(simulated_data_file, experimental_data_file)
 
-    def _import(self):
-        self.simulated_data = import_identification_data(simulated_data)
-        self.experimental_data = import_experimental_data(experimental_data)
+    def _import(self, simulated_data_file, experimental_data_file):
+        self.simulated_data = import_identification_data(simulated_data_file)
+        self.experimental_data = import_experimental_data(experimental_data_file)
 
     def import_identification_data(filename, sheet = 0, exclusion_list = None):
         odsinfo = ezodf.opendoc(filename)
         sheet = odsinfo.sheets[sheet_index]
         sheet_data = process_sheet(sheet, exclusion_list)
-        processed_data = get_processed_data(sheet_data, unknown = unknown)
+        processed_data = get_processed_data(sheet_data)
         return processed_data
 
     def process_sheet(sheet, exclusion_list):
@@ -44,7 +44,7 @@ class ImportData(object):
         # Convert to a 2D numpy array with dtype=object to handle mixed data types
         return np.array(data, dtype=object)
 
-    def get_processed_data(sheet_data, unknown = None):
+    def get_processed_data(sheet_data):
         names = sheet_data[:, 0]
         harmonics = sheet_data[:, 1].astype(int)
         f = sheet_data[:, 2].astype(float)
@@ -57,12 +57,9 @@ class ImportData(object):
     def convert_name(name):
         # Use regex to extract the atomic number, isotope name, and charge
         atomic_num, element, charge = re.findall(r"\d+|\D+", name)
-        # Format the atomic number and charge as superscripts
         atomic_num = '$^{'+str(atomic_num)+'}$'
         charge = '$^{'+str(charge)+'+}$'
-        # Form the element symbol by capitalizing the first letter of the isotope name
         element = element.capitalize()
-        # Combine the superscripts and element symbol
         return atomic_num + element + charge
 
     def import_experimental_data(filename):

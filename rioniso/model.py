@@ -23,17 +23,13 @@ def fit_iso_curve(T, sT, seeds, sigma):#T and sT in ps
         pass
 
 def calculate_reduced_chi_squared(y_data, y_fit, yerror, num_params):
-    # Calculate the residuals
     residuals = y_data - y_fit
-    # Calculate the chi-squared
     chi_squared = np.sum(residuals**2/yerror**2)
-    # Calculate the degrees of freedom (dof)
     dof = len(y_data) - num_params
-    # Calculate the reduced chi-squared
     chi_squared_red = chi_squared / dof
     return chi_squared_red
 
-def calculate_iso_inputs(simulated_data):
+def calculate_iso_inputs(simulated_data, data):
     for frequency in simulated_data:
         xx, yy, zz = get_cut_spectrogram(data['xx'],data['yy'],data['zz'], 
                     xcen = frequency, xspan = 7e3)
@@ -54,7 +50,8 @@ def calculate_iso_inputs(simulated_data):
 def transform_to_revolution_time(harmonics, frequency, frequency_error, frequency_spread, frequency_spread_error):
     # Inputs: np.arrays
     revolution_time = 1e12 / (frequency / harmonics)
+    revolution_time_error = frequency_error / (frequency**2) * harmonics * 1e12 # converting to picoseconds
     revolution_time_spread = frequency_spread / frequency * revolution_time
     revolution_time_spread_error =  harmonics / frequency / frequency / frequency * (frequency_spread_error * frequency + 2 * frequency_spread * frequency_error) * 1e12 # converting to picoseconds
-    revolution_time_error = frequency_error / (frequency**2) * harmonics * 1e12 # converting to picoseconds
+    
     return revolution_time, revolution_time_error, revolution_time_spread, revolution_time_spread_error

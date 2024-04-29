@@ -2,10 +2,12 @@ import matplotlib.pyplot as plt
 from adjustText import adjust_text
 import textalloc as ta
 
+class Plotters(object):
+    def __init__(self, revolution_time, revolution_time_spread):
+
 
 #separate the one under
-def isochronicity_curve_plot(T,T_y,T_n,sT, Nuclei_Y,Nuclei_N,ref,names_latex, gammat_0 = 1.395, 
-                             labels = False, fast = True, fts = 36):
+def isochronicity_curve_plot(T, sT, names_latex, gammat_0 = 1.395, fts = 36):
     fig, axs = plt.subplots(1, 1, figsize=(25, 15))
     
     x_fit = np.arange((T/1000).min()*1e6,(T/1000).max()*1e6, 10000) / 1e6
@@ -27,7 +29,6 @@ def isochronicity_curve_plot(T,T_y,T_n,sT, Nuclei_Y,Nuclei_N,ref,names_latex, ga
     axs.set_xlabel(r"Revolution time, $T$ (ns)", fontsize = fts)
     axs.set_ylabel(r"$\sigma_{T}$ (ps)", fontsize = fts)
 
-    #axs.set_title(f"Iso-curve, $\\gamma_t = {Gammat:.4f}$, $\\frac{{\\sigma_p}}{{p}} = {np.abs(dpop)*1e-1:.4f}$ $\%$, $\\sigma_{{sys}} = {abs(sigma_t_sys):.4f}$ ps", fontsize = fts)
     axs.grid(True, linestyle=':', color='grey',alpha = 0.7)
 
     handle_labels(axs, T, sT, names_latex, labels, fast)
@@ -41,7 +42,7 @@ def handle_labels(axs, T, sT, names_latex, labels, fast):
         ta.allocate_text(fig, axs, T/1000, sT, names_latex, x_scatter=T/1000, y_scatter=sT,
                         textsize=35, nbr_candidates=5000, seed=42, min_distance=0.05, max_distance=0.4)
 
-def main(T, T_y, T_n, sT, Nuclei_Y, Nuclei_N, ref, names_latex, gammat_0=1.395, labels=False, fast=True, fts=36):
+def main(T,  sT, names_latex, gammat_0=1.395, labels=False, fast=True, fts=36):
     # Preprocess data
     indexes_corrected = np.concatenate((np.where(ref == 'Y')[0], np.where(ref == 'N')[0])).tolist()
     T, sT, names_latex, y_sigmaT_vals, y_sigmaT_errs, unknown_ions = prepare_data(T, T_y, T_n, sT, Nuclei_Y, Nuclei_N, ref, names_latex, indexes_corrected)
@@ -55,5 +56,4 @@ def main(T, T_y, T_n, sT, Nuclei_Y, Nuclei_N, ref, names_latex, gammat_0=1.395, 
         plot_data(axs, T_n, y_sigmaT_vals[len(T_y):], y_sigmaT_errs[len(T_y):], sigma_sys, "Unknown ion", 'orange')
     # Handle labels
     handle_labels(axs, T, sT, names_latex, labels, fast)
-    plt.legend(shadow=True, fancybox=True, fontsize=fts-5)
-    plt.show()
+    
