@@ -1,6 +1,7 @@
 import argparse
 import ezodf
 from rioniso import ImportData
+from rioniso.model import *
 
 def main():
     scriptname = 'RionISO' 
@@ -13,7 +14,11 @@ def main():
     experimental_data = mydata.experimental_data
     simulated_data = mydata.simulated_data
 
+    # Calculating iso curve experimental data
+    iso_data = calculate_iso_inputs(imported_data.simulated_data, 
+                                imported_data.experimental_data, xspan=6e3)
+    
+
 
 if __name__ == "__main__":
     main()
-    

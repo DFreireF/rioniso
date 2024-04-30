@@ -2,19 +2,19 @@ from iqtools import *
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.constants import *
+from rioniso.functions import *
 
 c = physical_constants['speed of light in vacuum'][0]
 
-def gaussian(x, amplitude, mean, sigma):
-    return amplitude * np.exp(-((x - mean) / sigma)**2 / 2)
+class IsoCurve(object):
+    def __init__(self, simulated_data, experimental_data):
+        self.simulated_data = simulated_data
+        self.experimental_data = experimental_data
+        self.iso_data = np.array([])
 
-def linear_gaussian_func(x, m, c, amplitude, mean, sigma):
-    linear_term = m * x + c
-    gaussian_term = gaussian(x, amplitude, mean, sigma)
-    return linear_term + gaussian_term
+    def _iso_data(self, xspan = 6e3):
+        self.iso_data = calculate_iso_inputs(self.simulated_data, self.experimental_data, xspan=xspan)
 
-def iso_curve(revt, gammat, dp_p, sys, path = 108.36):
-    return np.sqrt((((1-(path/(revt*(c/1e9)))**2-1/(gammat**2))*dp_p*revt)**2+sys**2))
 
 def fit_iso_curve(T, sT, seeds, sigma):#T and sT in ps
     try:
@@ -25,7 +25,7 @@ def fit_iso_curve(T, sT, seeds, sigma):#T and sT in ps
     except RuntimeError:
         pass
 
-def fit_iso_curve_f(f, sigma, errors = None, seeds = [1.395, 4e-4, 1]):#T and sT in ps
+def fit_iso_curve_f(f, sigma, errors = None, seeds = [1.395, 2e-4, 0.5]):
     try:
         if errors is not None:
             fit_params, fit_covariance = curve_fit(iso_curve_f, f, sigma, p0=seeds,
@@ -36,9 +36,6 @@ def fit_iso_curve_f(f, sigma, errors = None, seeds = [1.395, 4e-4, 1]):#T and sT
 
     except RuntimeError:
         pass
-
-def iso_curve_f(revf, gammat, dp_p, sys, path = 108.36):
-    return np.sqrt((((1-(path/c*revf)**2-1/(gammat**2))*dp_p*revf)**2+sys**2))
 
 def calculate_reduced_chi_squared(y_data, y_fit, yerror, num_params):
     residuals = y_data - y_fit
@@ -70,6 +67,7 @@ def calculate_iso_inputs(simulated_data, data, xspan = 3e3):
             pass
 
     return np.array(iso_data)
+
 def transform_to_revolution_time(harmonics, frequency, frequency_error, frequency_spread, frequency_spread_error):
     # Inputs: np.arrays
     revolution_time = 1e12 / (frequency / harmonics)
@@ -78,3 +76,9 @@ def transform_to_revolution_time(harmonics, frequency, frequency_error, frequenc
     revolution_time_spread_error =  harmonics / frequency / frequency / frequency * (frequency_spread_error * frequency + 2 * frequency_spread * frequency_error) * 1e12 # converting to picoseconds
     
     return revolution_time, revolution_time_error, revolution_time_spread, revolution_time_spread_error
+
+def mass_resolving_power(mean, sigma, gammat):
+    return (2*np.sqrt(2*np.log(2))*sigma)**(-1) * mean * gammat**(-2)
+
+def FWHM_resolvable_isomer(resolving_power, mass):
+    return mass / R

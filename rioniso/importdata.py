@@ -60,9 +60,9 @@ class ImportData(object):
         return expdata
 
 def convert_name(name):
-        # Use regex to extract the atomic number, isotope name, and charge
-        atomic_num, element, charge = re.findall(r"\d+|\D+", name)
-        atomic_num = '$^{'+str(atomic_num)+'}$'
-        charge = '$^{'+str(charge)+'+}$'
-        element = element.capitalize()
-        return atomic_num + element + charge
+    # Use regex to extract the atomic number, isotope name, and charge
+    atomic_num, element, charge = re.findall(r"\d+|\D+", name)
+    atomic_num = '$^{'+str(atomic_num)+'}$'
+    charge = '$^{'+str(charge)+'+}$'
+    element = element.capitalize()
+    return atomic_num + element + charge
