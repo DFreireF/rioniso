@@ -10,6 +10,7 @@ class IsoCurve(object):
         self.experimental_data = experimental_data
         self.iso_data = np.array([])
         self._model_controller()
+        self.iso_data = np.column_stack((self.iso_data, np.ones(len(self.iso_data), dtype=bool))) # added bool for toogling
     
     def _model_controller(self):
         self.get_iso_data()
@@ -44,9 +45,10 @@ class IsoCurve(object):
         return np.array(iso_data)
 
     def set_iso_curve_fit_parameters(self, exclusion_list = []):
-        self.mean = np.delete(np.array([float(freq) for freq in self.iso_data[:, 1]]), exclusion_list)
-        self.sigma = np.delete(np.array([float(spread) for spread in self.iso_data[:, 3]]), exclusion_list)
-        #sigma_e = np.delete(np.array([float(spread_error) for spread_error in self.iso_data[:, 4]]), exclusion_list)
+        
+        self.mean = np.delete(np.asarray(self.iso_data[:, 1], dtype=float), exclusion_list)
+        self.sigma = np.delete(np.asarray(self.iso_data[:, 3], dtype=float), exclusion_list)
+        #sigma_e = np.delete(np.asarray(self.iso_data[:, 4], dtype=float), exclusion_list)
         self.fit_parameters, self.fit_errors = fit_iso_curve_f(self.mean, self.sigma)
     
     def set_fit_data(self, step = 100):

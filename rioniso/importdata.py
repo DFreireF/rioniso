@@ -14,21 +14,26 @@ Label | Harmonic | Simulated Frequency|
 
 class ImportData(object):
 
-    def __init__(self, simulated_data_file, experimental_data_file, simulated_sheet = 0):
+    def __init__(self):
         self.simulated_data = np.array([])
         self.experimental_data = np.array([])
-        self._import(simulated_data_file, experimental_data_file, simulated_sheet)
 
-    def _import(self, simulated_data_file, experimental_data_file, simulated_sheet):
-        self.simulated_data = self.import_identification_data(simulated_data_file, simulated_sheet)
-        self.experimental_data = self.import_experimental_data(experimental_data_file)
+    @classmethod
+    def _import(cls, simulated_data_file: str, experimental_data_file: str, simulated_sheet: int = 0) -> 'ImportData':
+        obj = cls()
+        obj.simulated_data = obj.import_identification_data(simulated_data_file, simulated_sheet)
+        obj.experimental_data = obj.import_experimental_data(experimental_data_file)
+        return obj
 
     def import_identification_data(self, filename, sheet_index, exclusion_list = []):
-        odsinfo = ezodf.opendoc(filename)
-        sheet = odsinfo.sheets[sheet_index]
-        sheet_data = self.process_sheet(sheet, exclusion_list)
-        processed_data = self.get_processed_data(sheet_data)
-        return processed_data
+        try:
+            odsinfo = ezodf.opendoc(filename)
+            sheet = odsinfo.sheets[sheet_index]
+            sheet_data = self.process_sheet(sheet, exclusion_list)
+            processed_data = self.get_processed_data(sheet_data)
+            return processed_data
+        except Exception as e:
+            raise ImportError(f"Failed to import data from {filename}: {e}")
 
     def process_sheet(self, sheet, exclusion_list = []):
         data = []
@@ -49,15 +54,16 @@ class ImportData(object):
         names = sheet_data[:, names_index]
         harmonics = sheet_data[:, harmonics_index].astype(int)
         f = sheet_data[:, frequency_index].astype(float)
-
         names_latex = [convert_name(name) for name in names]
-
         data = np.column_stack([names_latex, harmonics, f])
         return data
 
     def import_experimental_data(self, filename):
-        expdata = np.load(filename)
-        return expdata
+        try:
+            expdata = np.load(filename)
+            return expdata
+        except Exception as e:
+            raise ImportError(f"Failed to load experimental data from {filename}: {e}")
 
 def convert_name(name):
     # Use regex to extract the atomic number, isotope name, and charge
