@@ -17,30 +17,6 @@ class PlotCanvas(FigureCanvas):
         self.axes = self.fig.add_subplot(111)
         super().__init__(self.fig)
         self.setParent(parent)
-        self.iso_data = None
-        #self.fit_range = None
-        #self.fit_values = None
-        #self.fit_parameters = None
-        self.visibility = None
-        self.fit_line, = self.axes.plot([], [], 'r-', visible=False)
-        self.points = None  # To store the scatter plot references
-        #self.cid = self.mpl_connect('pick_event', self.on_pick)
-
-    def plot_data(self, iso_data, fit_range, fit_values, fit_parameters):
-
-        self.iso_data = iso_data
-        self.fit_range = fit_range
-        self.fit_values = fit_values
-        self.fit_parameters = fit_parameters
-        self.visibility = np.ones(iso_data.shape[0], dtype=bool)
-
-        self.axes.clear()  # Clear existing plot
-        self.axes.plot(fit_range, fit_values, 'r-', label='Fit')
-
-        # Plot data points with picker set to True for interactivity
-        self.points = self.axes.scatter(iso_data[:, 1].astype(float), iso_data[:, 3].astype(float), color='blue', picker=5)
-        self.axes.legend()
-        self.draw()
 
     def on_pick(self, event):
         """ Toggle visibility of picked data points. """
@@ -53,20 +29,11 @@ class PlotCanvas(FigureCanvas):
         self.points.set_facecolors(colors)
         self.draw()
     
-    def compute_fit(self):#MODIFY
+    def compute_fit(self):
         """ Recalculate the fit using only visible data points and update the plot. """
-        if self.iso_data is None:
-            return
-        # Filter data points that are visible
-        filtered_data = self.iso_data[self.visibility, :]
-        x = filtered_data[:, 1].astype(float)
-        y = filtered_data[:, 3].astype(float)
-        # Simple linear fit for demonstration
-        
-        fit_params = np.polyfit(x, y, 1)
-        fit_line = np.poly1d(fit_params)
-        self.fit_line.set_data(x, fit_line(x))
-        self.fit_line.set_visible(True)
+        #after toggling 
+        plot_data.update_indexes()
+
         self.axes.relim()
         self.axes.autoscale_view()
         self.draw()
@@ -100,7 +67,7 @@ class App(QMainWindow):
         loadButton.clicked.connect(self.load_data)
         self.layout.addWidget(loadButton)
 
-        fitButton = QPushButton('Compute Fit', self)
+        fitButton = QPushButton('(Re)Fit', self)
         fitButton.clicked.connect(self.plotCanvas.compute_fit)
         self.layout.addWidget(fitButton)
 
@@ -114,12 +81,21 @@ class App(QMainWindow):
         if simulated_file and experimental_file:
             try:
                 imported_data = ImportData._import(simulated_file, experimental_file, 10)  # 10 is the sheet index
-                iso_data = IsoCurve(imported_data.simulated_data, imported_data.experimental_data)
-                plots = Plotters(iso_data.iso_data, iso_data.fit_range, iso_data.fit_values, iso_data.fit_parameters)
-                self.plotCanvas.update_plot(iso_data.iso_data, iso_data.fit_range, iso_data.fit_values, iso_data.fit_parameters)
+                iso_data = IsoCurve.create_object(imported_data.simulated_data, imported_data.experimental_data)
+                self.controller(iso_data)
+
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to load or process data: {str(e)}")
                 raise e
+
+    def controller(self, iso_data, fitted_indexes = None):
+                    if fitted_indexes is not None:
+                        iso_data.fit_indices = fitted_indexes
+
+                    iso_data.create_fit_properties()
+
+                    plot_data = Plotters.create_object(iso_data.iso_data, iso_data.fit_range,   iso_data.fit_values, iso_data.fit_parameters, iso_data.fit_indices)
+                    plot_data.update_plot()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

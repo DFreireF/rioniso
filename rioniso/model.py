@@ -5,15 +5,22 @@ from rioniso.functions import *
 
 class IsoCurve(object):
 
-    def __init__(self, simulated_data, experimental_data):
-        self.simulated_data = simulated_data
-        self.experimental_data = experimental_data
+    def __init__(self):
+        self.simulated_data = np.array([])
+        self.experimental_data = np.array([])
         self.iso_data = np.array([])
-        self._model_controller()
-        self.iso_data = np.column_stack((self.iso_data, np.ones(len(self.iso_data), dtype=bool))) # added bool for toogling
-    
-    def _model_controller(self):
-        self.get_iso_data()
+        self.fit_indices = np.array([])
+
+    @classmethod
+    def create_object(cls, simulated_data, experimental_data):
+        obj = cls()
+        obj.simulated_data = simulated_data
+        obj.experimental_data = experimental_data
+        obj.get_iso_data()
+        obj.fit_indices = np.arange(0, len(obj.iso_data), 1) #by default all the index will be displayed
+        return obj
+
+    def create_fit_properties(self):
         self.set_iso_curve_fit_parameters()
         self.set_fit_data()
 
@@ -44,19 +51,21 @@ class IsoCurve(object):
 
         return np.array(iso_data)
 
-    def set_iso_curve_fit_parameters(self, exclusion_list = []):
-        
-        self.mean = np.delete(np.asarray(self.iso_data[:, 1], dtype=float), exclusion_list)
-        self.sigma = np.delete(np.asarray(self.iso_data[:, 3], dtype=float), exclusion_list)
-        #sigma_e = np.delete(np.asarray(self.iso_data[:, 4], dtype=float), exclusion_list)
-        self.fit_parameters, self.fit_errors = fit_iso_curve_f(self.mean, self.sigma)
+    def set_iso_curve_fit_parameters(self):
+        try:
+            self.mean = np.asarray(self.iso_data[:, 1][self.fit_indices], dtype=float)
+            self.sigma = np.asarray(self.iso_data[:, 3][self.fit_indices], dtype=float)
+            #sigma_e = np.asarray(self.iso_data[:, 4][visible_indices], dtype=float)
+            self.fit_parameters, self.fit_errors = fit_iso_curve_f(self.mean, self.sigma)
+
+        except Exception as e:
+            print(f"Error calculating fit parameters: {e}")
+            self.fit_parameters, self.fit_errors = None, None
     
     def set_fit_data(self, step = 100):
         self.fit_range = np.arange(self.mean.min(), self.mean.max(), step)
         self.fit_values = iso_curve_f(self.fit_range, *self.fit_parameters)
 
-    #def store_fit_parameters(self):
-    #    self.fit_params, self.fit_errors
 
 def fit_iso_curve_f(f, sigma, errors = None, seeds = [1.395, 2e-4, 0.5]):
     try:
