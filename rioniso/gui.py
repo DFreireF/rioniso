@@ -11,33 +11,6 @@ from rioniso.model import IsoCurve
 from rioniso.importdata import ImportData
 from rioniso.plotters import Plotters
 
-class PlotCanvas(FigureCanvas):
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        self.fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = self.fig.add_subplot(111)
-        super().__init__(self.fig)
-        self.setParent(parent)
-
-    def on_pick(self, event):
-        """ Toggle visibility of picked data points. """
-        ind = event.ind[0]  # index of the picked point
-        self.visibility[ind] = not self.visibility[ind]  # Toggle visibility
-        self.update_plot()
-    
-    def update_plot(self):
-        colors = ['blue' if vis else 'none' for vis in self.visibility]
-        self.points.set_facecolors(colors)
-        self.draw()
-    
-    def compute_fit(self):
-        """ Recalculate the fit using only visible data points and update the plot. """
-        #after toggling 
-        plot_data.update_indexes()
-
-        self.axes.relim()
-        self.axes.autoscale_view()
-        self.draw()
-
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -53,7 +26,9 @@ class App(QMainWindow):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        self.plotCanvas = PlotCanvas(self, width=5, height=4)
+        self.plotCanvas = Plotters._set_fig(width=15, height=8, dpi=300, fs = 18)
+        self.mpl_connect('pick_event', self.on_pick)
+
         self.toolbar = NavigationToolbar(self.plotCanvas, self)
 
         # Layout with vertical box
@@ -80,22 +55,33 @@ class App(QMainWindow):
         experimental_file, _ = QFileDialog.getOpenFileName(self, "Select Experimental Data File", "", "NPZ Files (*.npz)")
         if simulated_file and experimental_file:
             try:
-                imported_data = ImportData._import(simulated_file, experimental_file, 10)  # 10 is the sheet index
-                iso_data = IsoCurve.create_object(imported_data.simulated_data, imported_data.experimental_data)
-                self.controller(iso_data)
+                self.imported_data = ImportData._import(simulated_file, experimental_file, 10)  # 10 is the sheet index
+                self.iso_data = IsoCurve.create_object(self.imported_data.simulated_data, self.imported_data.experimental_data)
+                self.controller(self.iso_data)
 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to load or process data: {str(e)}")
                 raise e
 
-    def controller(self, iso_data, fitted_indexes = None):
-                    if fitted_indexes is not None:
+    def controller(self, iso_data, fitted_indexes = None, fig = False):
+                    if fitted_indexes is False:
                         iso_data.fit_indices = fitted_indexes
 
                     iso_data.create_fit_properties()
 
-                    plot_data = Plotters.create_object(iso_data.iso_data, iso_data.fit_range,   iso_data.fit_values, iso_data.fit_parameters, iso_data.fit_indices)
-                    plot_data.update_plot()
+                    self.plot_data = Plotters.create_object(iso_data.iso_data, iso_data.fit_range,   iso_data.fit_values, iso_data.fit_parameters, iso_data.fit_indices)
+                    self.plot_data.update_plot(fig = fig)
+
+    def on_pick(self, event):
+        """ Toggle visibility of picked data points. """
+        ind = event.ind[0]  # index of the picked point
+        self.plot_data.toggle_visibility(ind) 
+
+    def recompute_fit(self):
+        """ Recalculate the fit using only visible data points and update the plot. """
+        #after toggling 
+        self.plot_data.update_indexes()
+        self.controller(self.iso_data, fitted_indexes = self.plot_data.fitted_indexes, fig = True)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

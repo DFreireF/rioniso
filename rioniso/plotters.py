@@ -26,8 +26,9 @@ class Plotters(object):
         obj.fitted_indexes = fitted_indexes
         return obj
 
-    def update_plot(self):
-        self._set_fig()
+    def update_plot(self, fig = None):
+        if fig is None: 
+            self._set_fig()
         self._plot_fit(*self.fit_parameters)
         self._plot_data()
         self.handle_labels()
