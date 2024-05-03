@@ -11,6 +11,20 @@ from rioniso.model import IsoCurve
 from rioniso.importdata import ImportData
 from rioniso.plotters import Plotters
 
+class PlotCanvas(FigureCanvas):
+    def __init__(self, parent=None):
+        self.plotters = Plotters()  # Initialize Plotters
+        #self.plotters._set_fig(width=15, height=8, dpi=300, fs = 18)
+        super().__init__(self.plotters.fig)
+        self.setParent(parent)
+        self.mpl_connect('pick_event', self.on_pick)
+
+    def on_pick(self, event):
+        """ Toggle visibility of picked data points. """
+        index = event.ind[0]  # Get the first (and should be only) index
+        self.plotters.toggle_visibility(index)
+        print("Picked index:", index)
+
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -26,9 +40,7 @@ class App(QMainWindow):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        self.plotCanvas = Plotters._set_fig(width=15, height=8, dpi=300, fs = 18)
-        self.mpl_connect('pick_event', self.on_pick)
-
+        self.plotCanvas = PlotCanvas(self)
         self.toolbar = NavigationToolbar(self.plotCanvas, self)
 
         # Layout with vertical box
@@ -42,8 +54,12 @@ class App(QMainWindow):
         loadButton.clicked.connect(self.load_data)
         self.layout.addWidget(loadButton)
 
+        loadlabelsButton = QPushButton('Load Labels', self)
+        loadlabelsButton.clicked.connect(self.load_lables)
+        self.layout.addWidget(loadlabelsButton)
+
         fitButton = QPushButton('(Re)Fit', self)
-        fitButton.clicked.connect(self.plotCanvas.compute_fit)
+        fitButton.clicked.connect(self.recompute_fit)
         self.layout.addWidget(fitButton)
 
         exitButton = QPushButton('Exit', self)
@@ -57,6 +73,7 @@ class App(QMainWindow):
             try:
                 self.imported_data = ImportData._import(simulated_file, experimental_file, 10)  # 10 is the sheet index
                 self.iso_data = IsoCurve.create_object(self.imported_data.simulated_data, self.imported_data.experimental_data)
+                self.plotCanvas.plotters.marker_visibility = [True] * np.shape(self.iso_data.iso_data)[0]
                 self.controller(self.iso_data)
 
             except Exception as e:
@@ -64,24 +81,29 @@ class App(QMainWindow):
                 raise e
 
     def controller(self, iso_data, fitted_indexes = None, fig = False):
-                    if fitted_indexes is False:
-                        iso_data.fit_indices = fitted_indexes
+        if fitted_indexes is not None:
+            iso_data.fit_indices = fitted_indexes
+        iso_data.create_fit_properties()
 
-                    iso_data.create_fit_properties()
+        self.plotCanvas.plotters.mean_freq = np.asarray(iso_data.iso_data[:, 1], dtype=float) * 1e-6
+        self.plotCanvas.plotters.sigma_freq = np.asarray(iso_data.iso_data[:, 3], dtype=float)
+        self.plotCanvas.plotters.sigma_freq_err = np.asarray(iso_data.iso_data[:, 4], dtype=float)
+        self.plotCanvas.plotters.names = iso_data.iso_data[:, 0]
+        self.plotCanvas.plotters.xfit = iso_data.fit_range * 1e-6
+        self.plotCanvas.plotters.yfit = iso_data.fit_values
+        self.plotCanvas.plotters.fit_parameters = iso_data.fit_parameters
+        #self.plotCanvas.plotters.fitted_indexes = iso_data.fit_indices
 
-                    self.plot_data = Plotters.create_object(iso_data.iso_data, iso_data.fit_range,   iso_data.fit_values, iso_data.fit_parameters, iso_data.fit_indices)
-                    self.plot_data.update_plot(fig = fig)
-
-    def on_pick(self, event):
-        """ Toggle visibility of picked data points. """
-        ind = event.ind[0]  # index of the picked point
-        self.plot_data.toggle_visibility(ind) 
+        self.plotCanvas.plotters.update_plot(fig = fig)
 
     def recompute_fit(self):
         """ Recalculate the fit using only visible data points and update the plot. """
         #after toggling 
-        self.plot_data.update_indexes()
-        self.controller(self.iso_data, fitted_indexes = self.plot_data.fitted_indexes, fig = True)
+        new_indices = self.plotCanvas.plotters.update_indexes()
+        self.controller(self.iso_data, fitted_indexes = new_indices, fig = True)
+    
+    def load_lables(self):
+        self.plotCanvas.plotters.handle_labels()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
