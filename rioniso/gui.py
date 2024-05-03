@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QDesktopWidget
 from PyQt5.QtCore import QLoggingCategory, QCoreApplication
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -13,17 +13,14 @@ from rioniso.plotters import Plotters
 
 class PlotCanvas(FigureCanvas):
     def __init__(self, parent=None):
-        self.plotters = Plotters()  # Initialize Plotters
-        #self.plotters._set_fig(width=15, height=8, dpi=300, fs = 18)
+        self.plotters = Plotters(width=10, height=6, dpi=300, fs = 14)  # Initialize Plotters
         super().__init__(self.plotters.fig)
         self.setParent(parent)
-        self.mpl_connect('pick_event', self.on_pick)
+        self.plotters.fig.canvas.mpl_connect('pick_event', self.on_pick)
 
     def on_pick(self, event):
         """ Toggle visibility of picked data points. """
-        index = event.ind[0]  # Get the first (and should be only) index
-        self.plotters.toggle_visibility(index)
-        print("Picked index:", index)
+        self.plotters.handle_events(event)
 
 class App(QMainWindow):
     def __init__(self):
@@ -31,8 +28,8 @@ class App(QMainWindow):
         self.title = 'Isochronous Curve Monitoring'
         self.left = 100
         self.top = 100
-        self.width = 800
-        self.height = 600
+        self.width = QDesktopWidget().screenGeometry(-1).width()
+        self.height = QDesktopWidget().screenGeometry(-1).height()
         QLoggingCategory.setFilterRules('*.warning=false\n*.critical=false') #logging annoying messages
         self.initUI()
 
@@ -54,7 +51,7 @@ class App(QMainWindow):
         loadButton.clicked.connect(self.load_data)
         self.layout.addWidget(loadButton)
 
-        loadlabelsButton = QPushButton('Load Labels', self)
+        loadlabelsButton = QPushButton('Toggle Labels', self)
         loadlabelsButton.clicked.connect(self.load_lables)
         self.layout.addWidget(loadlabelsButton)
 
@@ -80,7 +77,7 @@ class App(QMainWindow):
                 QMessageBox.critical(self, "Error", f"Failed to load or process data: {str(e)}")
                 raise e
 
-    def controller(self, iso_data, fitted_indexes = None, fig = False):
+    def controller(self, iso_data, fitted_indexes = None):
         if fitted_indexes is not None:
             iso_data.fit_indices = fitted_indexes
         iso_data.create_fit_properties()
@@ -92,15 +89,14 @@ class App(QMainWindow):
         self.plotCanvas.plotters.xfit = iso_data.fit_range * 1e-6
         self.plotCanvas.plotters.yfit = iso_data.fit_values
         self.plotCanvas.plotters.fit_parameters = iso_data.fit_parameters
-        #self.plotCanvas.plotters.fitted_indexes = iso_data.fit_indices
 
-        self.plotCanvas.plotters.update_plot(fig = fig)
+        self.plotCanvas.plotters.update_plot()
 
     def recompute_fit(self):
         """ Recalculate the fit using only visible data points and update the plot. """
         #after toggling 
         new_indices = self.plotCanvas.plotters.update_indexes()
-        self.controller(self.iso_data, fitted_indexes = new_indices, fig = True)
+        self.controller(self.iso_data, fitted_indexes = new_indices)
     
     def load_lables(self):
         self.plotCanvas.plotters.handle_labels()
