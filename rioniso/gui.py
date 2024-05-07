@@ -1,7 +1,8 @@
 import sys
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QDesktopWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QFileDialog, QMessageBox, QDesktopWidget
 from PyQt5.QtCore import QLoggingCategory, QCoreApplication
+from PyQt5.QtGui import QFont
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 from matplotlib.backend_bases import PickEvent
@@ -36,6 +37,11 @@ class App(QMainWindow):
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
+        self.setStyleSheet("""
+            background-color: #f0f0f0;
+            font-size: 18pt;
+            font-family = Times;
+        """)
 
         self.plotCanvas = PlotCanvas(self)
         self.toolbar = NavigationToolbar(self.plotCanvas, self)
@@ -46,22 +52,71 @@ class App(QMainWindow):
         self.layout.addWidget(self.toolbar)
         self.layout.addWidget(self.plotCanvas)
         self.setCentralWidget(self.widget)
+        
+        font = QFont("Times", 15)
+        font.setBold(True)
 
         loadButton = QPushButton('Load Data', self)
+        loadButton.setFont(font)
+        loadButton.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #355E3B;
+            }
+        """)
         loadButton.clicked.connect(self.load_data)
-        self.layout.addWidget(loadButton)
 
         loadlabelsButton = QPushButton('Toggle Labels', self)
+        loadlabelsButton.setStyleSheet("""
+            QPushButton {
+                background-color: #7ec8e3;
+                color: white;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #0000ff;
+            }
+        """)
+        loadlabelsButton.setFont(font)
         loadlabelsButton.clicked.connect(self.load_lables)
-        self.layout.addWidget(loadlabelsButton)
 
         fitButton = QPushButton('(Re)Fit', self)
+        fitButton.setStyleSheet("""
+            QPushButton {
+                background-color: #7ec8e3;
+                color: white;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #0000ff;
+            }
+        """)
+        fitButton.setFont(font)
         fitButton.clicked.connect(self.recompute_fit)
-        self.layout.addWidget(fitButton)
-
         exitButton = QPushButton('Exit', self)
+        exitButton.setStyleSheet("""
+            QPushButton {
+                background-color: #f44336;
+                color: white;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #821d30;
+            }
+        """)
+        exitButton.setFont(font)
         exitButton.clicked.connect(QCoreApplication.instance().quit)
-        self.layout.addWidget(exitButton)
+
+        hbox_buttons = QHBoxLayout()
+        hbox_buttons.addWidget(loadButton)
+        hbox_buttons.addWidget(loadlabelsButton)
+        hbox_buttons.addWidget(fitButton)
+        hbox_buttons.addWidget(exitButton)    
+        self.layout.addLayout(hbox_buttons)
 
     def load_data(self):
         simulated_file, _ = QFileDialog.getOpenFileName(self, "Select Simulated Data File", "", "ODS Files (*.ods)")
